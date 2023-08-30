@@ -67,7 +67,7 @@ const downloadAllQRCodes = async (qrCodes, setLoading, toast) => {
   setLoading(true);
   const zip = new JSZip();
   const promises = qrCodes.map(async (qr, index) => {
-    const label = `qr${String(index + 1).padStart(3, "0")}`; // Naming scheme like qr001, qr002, ...
+    const label = `qr${String(index + 1).padStart(3, "0")}`;
     const canvas = await createImageWithLabel(qr.s3URL, label);
     const blob = await new Promise((resolve) => canvas.toBlob(resolve));
     zip.file(`${label}.png`, blob);
@@ -120,13 +120,25 @@ const formatDate = (dateString) => {
 const QrGrid = () => {
   const [qrCodes, setQrCodes] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [qrCodesWithLabels, setQrCodesWithLabels] = useState([]);
+
   const toast = useToast();
 
   useEffect(() => {
-    const getQRCodes = async () => {
+    const getQRCodesWithLabels = async () => {
       try {
         const codes = await fetchQRCodes();
-        setQrCodes(codes.slice(0, 30));
+        const labelPromises = codes.slice(0, 30).map(async (qr, index) => {
+          const label = `qr${String(index + 1).padStart(3, "0")}`;
+          const canvas = await createImageWithLabel(qr.s3URL, label);
+          return {
+            ...qr,
+            labelImageUrl: canvas.toDataURL(),
+          };
+        });
+
+        const qrCodesWithLabels = await Promise.all(labelPromises);
+        setQrCodesWithLabels(qrCodesWithLabels);
       } catch (error) {
         toast({
           title: "Error",
@@ -139,7 +151,7 @@ const QrGrid = () => {
       }
     };
 
-    getQRCodes();
+    getQRCodesWithLabels();
   }, [toast]);
 
   const generateCSV = (data) => {
@@ -184,12 +196,12 @@ const QrGrid = () => {
             bgColor: "#000",
             transform: "translateY(-5px)",
           }}
-          fontSize={{base: "xs", sm: "md"}}
+          fontSize={{ base: "xs", sm: "md" }}
         >
           Generate Report
         </Button>
         <Button
-          onClick={() => downloadAllQRCodes(qrCodes, setLoading, toast)}
+          onClick={() => downloadAllQRCodes(qrCodesWithLabels, setLoading, toast)}
           bg={"#000"}
           color={"#facb05"}
           rightIcon={<BiDownload />}
@@ -197,7 +209,7 @@ const QrGrid = () => {
             bgColor: "#000",
             transform: "translateY(-5px)",
           }}
-          fontSize={{base: "xs", sm: "md"}}
+          fontSize={{ base: "xs", sm: "md" }}
         >
           Download All
         </Button>
@@ -207,9 +219,9 @@ const QrGrid = () => {
         spacing={6}
         padding="10px"
       >
-        {qrCodes.map((qr) => (
+        {qrCodesWithLabels.map((qr) => (
           <Box key={qr._id} mb={4} position={"relative"}>
-            <ChakraImage src={qr.s3URL} />
+            <ChakraImage src={qr.labelImageUrl} />
             {qr.isActivated && (
               <Flex justify="center" mt={1}>
                 <Button
