@@ -1,6 +1,6 @@
 import { Box } from "@chakra-ui/react";
 import Navbar from "../components/NavBar";
-import QrGrid from "../components/QRgrid";
+import QrGrid from "../components/QrGrid";
 
 
 const HomePage = () => {
